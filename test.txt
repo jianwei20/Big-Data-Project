@@ -18,112 +18,111 @@ import org.apache.spark.ml.classification.RandomForestClassifier
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.feature.RFormula
-import scalax.chart.module.Charting.XYLineChart
-import scalax.chart.api._
+//import scalax.chart.module.Charting.XYLineChart //draw API
+//import scalax.chart.api._ //draw API
 import org.apache.spark.sql.Row
 import scala.Vector
 
 object ml_ctrDemo {
-	def main(args: Array[String]) {
-		SetLogger()
-			val conf = new SparkConf().setAppName("ClickThroughRatePrediction").setMaster("local[*]")
-			val sc = new SparkContext(conf)
-			val sqlContext = new SQLContext(sc)
-
-			println("============================ START ============================")
-			val t0 = System.currentTimeMillis()
-
-
-			val customSchema = StructType(Array(
-						StructField("id", DoubleType, true),
-						StructField("click", DoubleType, true),
-						StructField("hour", StringType, true),
-						StructField("C1", DoubleType, true),
-						StructField("banner_pos", DoubleType, true),
-						StructField("site_id", StringType, true),
-						StructField("site_domain", StringType, true),
-						StructField("site_category", StringType, true),
-						StructField("app_id", StringType, true),
-						StructField("app_domain", StringType, true),
-						StructField("app_category", StringType, true),
-						StructField("device_id", StringType, true),
-						StructField("device_ip", StringType, true),
-						StructField("device_model", StringType, true),
-						StructField("device_type", DoubleType, true),
-						StructField("device_conn_type", DoubleType, true),
-						StructField("C14", DoubleType, true),
-						StructField("C15", DoubleType, true),
-						StructField("C16", DoubleType, true),
-						StructField("C17", DoubleType, true),
-						StructField("C18", DoubleType, true),
-						StructField("C19", DoubleType, true),
-						StructField("C20", DoubleType, true),
-						StructField("C21", DoubleType, true)))
-
-							val rawDF = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").schema(customSchema).load("/home/frankie/exData/trainDemo.csv")
-							val data = new StringIndexer().setInputCol("click").setOutputCol("label").fit(rawDF).transform(rawDF)
-
-							//RFormula: string input colums will be one-hot encoded, and numeric columns will be cast to doubles.
-							val formula = new RFormula().setFormula("label ~ C1 + banner_pos + site_category + app_category +device_type + device_conn_type + C15 + C16 + C18 + C19")
-							.setFeaturesCol("features")
-							.setLabelCol("label")
-							val output = formula.fit(data).transform(data)
-							val data1 = output.select("label", "features")
-							println(data1.show)
+  def main(args: Array[String]) {
+    SetLogger()
+    //val conf = new SparkConf().setAppName("ClickThroughRatePrediction").setMaster("local[*]") 
+    //val sc = new SparkContext(conf)
+    val sqlContext = new SQLContext(sc) //sc (what does sc do?)
+//Start from here!!! Just give it command line
+    println("============================ START ============================")
+    val t0 = System.currentTimeMillis()
 
 
-							// Split training and test data.
-							val Array(training, test) = data1.randomSplit(Array(0.7, 0.3), seed = 12345)
-							//println(training.show())
+    val customSchema = StructType(Array(
+      StructField("id", DoubleType, true),
+      StructField("click", DoubleType, true),
+      StructField("hour", StringType, true),
+      StructField("C1", DoubleType, true),
+      StructField("banner_pos", DoubleType, true),
+      StructField("site_id", StringType, true),
+      StructField("site_domain", StringType, true),
+      StructField("site_category", StringType, true),
+      StructField("app_id", StringType, true),
+      StructField("app_domain", StringType, true),
+      StructField("app_category", StringType, true),
+      StructField("device_id", StringType, true),
+      StructField("device_ip", StringType, true),
+      StructField("device_model", StringType, true),
+      StructField("device_type", DoubleType, true),
+      StructField("device_conn_type", DoubleType, true),
+      StructField("C14", DoubleType, true),
+      StructField("C15", DoubleType, true),
+      StructField("C16", DoubleType, true),
+      StructField("C17", DoubleType, true),
+      StructField("C18", DoubleType, true),
+      StructField("C19", DoubleType, true),
+      StructField("C20", DoubleType, true),
+      StructField("C21", DoubleType, true)))
 
-							// Configure an ML pipeline, which consists of three stages: tokenizer, hashingTF, and rf (random forest).
-							val rf = new RandomForestClassifier().setMaxBins(70)
-							val pipeline = new Pipeline().setStages(Array(rf))
-							val evaluator = new BinaryClassificationEvaluator()
-							val evaluatorParaMap = ParamMap(evaluator.metricName -> "areaUnderROC")
-							val pipelineModel = pipeline.fit(training)
-							val trainingPredictions = pipelineModel.transform(training)
-							println(trainingPredictions.show)
-							val testPredictions = pipelineModel.transform(test)
-							val aucTraining = evaluator.evaluate(trainingPredictions, evaluatorParaMap)
-							val aucTest = evaluator.evaluate(testPredictions, evaluatorParaMap)
+    val rawDF = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").schema(customSchema).load("file:///media/bigdatas16/D/Click-Through_Rate_Prediction/train100000.csv") //My file place! NOt here : /home/frankie/exData/trainDemo.csv
+    val data = new StringIndexer().setInputCol("click").setOutputCol("label").fit(rawDF).transform(rawDF)
 
-							// The multiplies out to (2 x 3 x 3) x 10 = 180 different models being trained.
-							// k = 3 and k = 10 are common
-							val paramGrid = new ParamGridBuilder().addGrid(rf.impurity, Array("entropy", "gini")).addGrid(rf.maxBins, Array(80, 160, 240))
-							.addGrid(rf.numTrees, Array(10, 30, 50)).build()
-							//println(paramGrid(1))
-							val cv = new CrossValidator().setEstimator(pipeline).setEvaluator(evaluator).setEstimatorParamMaps(paramGrid).setNumFolds(3)
-							//Run cross-validation, and choose the best set of parameters.
-							val cvModel = cv.fit(training)
-							val cvPredictions = cvModel.transform(test)
-							val cvAUCTest = evaluator.evaluate(cvPredictions, evaluatorParaMap)
-
-
-							println(cvPredictions.show)
-
-
-
-							//println("pipeline Training AUC: " + aucTraining)
-							println("pipeline Test AUC: " + aucTest)
-							println("Cross-Validation test AUC: " + cvAUCTest)
-
-
-							val bestModel = cvModel.bestModel
+    //RFormula: string input colums will be one-hot encoded, and numeric columns will be cast to doubles.
+    val formula = new RFormula().setFormula("label ~ C1 + banner_pos + site_category + app_category +device_type + device_conn_type + C15 + C16 + C18 + C19")
+    .setFeaturesCol("features")
+    .setLabelCol("label")
+    val output = formula.fit(data).transform(data)
+    val data1 = output.select("label", "features")
+    println(data1.show)
 
 
+    // Split training and test data.
+    val Array(training, test) = data1.randomSplit(Array(0.7, 0.3), seed = 12345)
+    //println(training.show())
 
-							println("\n============================ FINISH ============================")
-							val t1 = System.currentTimeMillis()
-							println("Elapsed: " + ((t1 - t0) / 1000) + "sec")
-							println("================================================================")
-							sc.stop()
-	}
+    // Configure an ML pipeline, which consists of three stages: tokenizer, hashingTF, and rf (random forest).
+    val rf = new RandomForestClassifier().setMaxBins(70)
+    val pipeline = new Pipeline().setStages(Array(rf))
+    val evaluator = new BinaryClassificationEvaluator()
+    val evaluatorParaMap = ParamMap(evaluator.metricName -> "areaUnderROC")
+    val pipelineModel = pipeline.fit(training)
+    val trainingPredictions = pipelineModel.transform(training)
+    println(trainingPredictions.show)
+    val testPredictions = pipelineModel.transform(test)
+    val aucTraining = evaluator.evaluate(trainingPredictions, evaluatorParaMap)
+    val aucTest = evaluator.evaluate(testPredictions, evaluatorParaMap)
 
-	def SetLogger() = {
-		Logger.getLogger("org").setLevel(Level.OFF)
-			Logger.getLogger("con").setLevel(Level.OFF)
-			System.setProperty("spark.ui.showConsoleProgress", "false")
-			Logger.getRootLogger().setLevel(Level.OFF)
-	}
+    // The multiplies out to (2 x 3 x 3) x 10 = 180 different models being trained.
+    // k = 3 and k = 10 are common
+    val paramGrid = new ParamGridBuilder().addGrid(rf.impurity, Array("entropy", "gini")).addGrid(rf.maxBins, Array(80, 160, 240)).addGrid(rf.numTrees, Array(10, 30, 50)).build()
+    //println(paramGrid(1))
+    val cv = new CrossValidator().setEstimator(pipeline).setEvaluator(evaluator).setEstimatorParamMaps(paramGrid).setNumFolds(3)
+    //Run cross-validation, and choose the best set of parameters.
+    val cvModel = cv.fit(training)
+    val cvPredictions = cvModel.transform(test)
+    val cvAUCTest = evaluator.evaluate(cvPredictions, evaluatorParaMap)
+
+
+    println(cvPredictions.show)
+    
+    
+
+    //println("pipeline Training AUC: " + aucTraining)
+    println("pipeline Test AUC: " + aucTest)
+    println("Cross-Validation test AUC: " + cvAUCTest)
+
+    
+    val bestModel = cvModel.bestModel
+
+
+
+    println("\n============================ FINISH ============================")
+    val t1 = System.currentTimeMillis()
+    println("Elapsed: " + ((t1 - t0) / 1000) + "sec")
+    println("================================================================")
+    sc.stop()
+  }
+
+  def SetLogger() = {
+    Logger.getLogger("org").setLevel(Level.OFF)
+    Logger.getLogger("con").setLevel(Level.OFF)
+    System.setProperty("spark.ui.showConsoleProgress", "false")
+    Logger.getRootLogger().setLevel(Level.OFF)
+  }
 }
