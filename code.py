@@ -18,3 +18,38 @@ def writeRecords(record):
      return [output.getvalue()]
      pandaLovers.mapPartitions(writeRecords).saveAsTextFile(outputFile)
 ~
+
+# My name is Pong Pong ^_^
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+sqlContext = SQLContext(sc)
+
+ customSchema = StructType([
+      StructField("id", DoubleType(), False),
+      StructField("click", DoubleType(), False),
+      StructField("hour", StringType(), True),
+      StructField("C1", DoubleType(), False),
+      StructField("banner_pos", DoubleType(), False),
+      StructField("site_id", StringType(), True),
+      StructField("site_domain", StringType(), True),
+      StructField("site_category", StringType(), True),
+      StructField("app_id", StringType(), True),
+      StructField("app_domain", StringType(), True),
+      StructField("app_category", StringType(), True),
+      StructField("device_id", StringType(), True),
+      StructField("device_ip", StringType(), True),
+      StructField("device_model", StringType(), True),
+      StructField("device_type", DoubleType(), False),
+      StructField("device_conn_type", DoubleType(), False),
+      StructField("C14", DoubleType(), False),
+      StructField("C15", DoubleType(), False),
+      StructField("C16", DoubleType(), False),
+      StructField("C17", DoubleType(), False),
+      StructField("C18", DoubleType(), False),
+      StructField("C19", DoubleType(), False),
+      StructField("C20", DoubleType(), False),
+      StructField("C21", DoubleType(), False)])
+# Get file
+df = sqlContext.read.format("com.databricks.spark.csv").options(header= 'true', inferSchema= 'true').schema(customSchema).load("file:///home/bigdatas16/Downloads/train100K.csv")
+# Displays the content of the DataFrame to stdout
+df.show()
