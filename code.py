@@ -22,7 +22,7 @@ def writeRecords(record):
 # My name is Pong Pong ^_^
 from pyspark.sql import SQLContext
 from pyspark.sql.types import *
-sqlContext = SQLContext(sc)
+    sqlContext = SQLContext(sc)
 
  customSchema = StructType([
       StructField("id", DoubleType(), False),
@@ -50,6 +50,21 @@ sqlContext = SQLContext(sc)
       StructField("C20", DoubleType(), False),
       StructField("C21", DoubleType(), False)])
 # Get file
-df = sqlContext.read.format("com.databricks.spark.csv").options(header= 'true', inferSchema= 'true').schema(customSchema).load("file:///home/bigdatas16/Downloads/train100K.csv")
+    df = sqlContext.read.format("com.databricks.spark.csv").options(header= 'true', inferSchema= 'true').schema(customSchema).load("file:///home/bigdatas16/Downloads/train100K.csv")
 # Displays the content of the DataFrame to stdout
-df.show()
+    df.show()
+
+from pyspark.ml.feature import StringIndexer
+    data = StringIndexer(inputCol="click", outputCol="label").fit(df).transform(df)
+    data.show()
+
+# RFormula
+from pyspark.ml.feature import RFormula
+    formula = RFormula(formula="label ~ C1 + banner_pos + site_category + app_category +device_type + device_conn_type + C15 + C16 + C18 + C19", featuresCol="features", labelCol="label")
+    output = formula.fit(data).transform(data)
+    data1 = output.select("label", "features")
+    data1.show()
+
+# Split training and test data.
+    training, test = data1.randomSplit([0.7, 0.3], seed = 12345)
+    training.show()
