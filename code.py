@@ -50,7 +50,7 @@ from pyspark.sql.types import *
       StructField("C20", DoubleType(), False),
       StructField("C21", DoubleType(), False)])
 # Get file
-    df = sqlContext.read.format("com.databricks.spark.csv").options(header= 'true', inferSchema= 'true').schema(customSchema).load("file:///home/bigdatas16/Downloads/train100K.csv")
+    df = sqlContext.read.format("com.databricks.spark.csv").options(header= 'true').schema(customSchema).load("file:///home/bigdatas16/Downloads/train100K.csv")
 # Displays the content of the DataFrame to stdout
     df.show()
 
@@ -68,3 +68,32 @@ from pyspark.ml.feature import RFormula
 # Split training and test data.
     training, test = data1.randomSplit([0.7, 0.3], seed = 12345)
     training.show()
+    
+# Configure an ML pipeline, which consists of three stages: tokenizer, hashingTF, and rf (random forest).
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.param import Param, Params
+from pyspark.ml.feature import HashingTF, Tokenizer
+from pyspark.sql import Row
+from pyspark.ml import Pipeline
+from pyspark.ml.classification import RandomForestClassifier
+from pyspark.ml.feature import StringIndexer, VectorIndexer
+from pyspark.mllib.classification import LogisticRegressionWithLBFGS
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.mllib.util import MLUtils
+rf = RandomForestClassifier().setMaxBins(70)
+    pipeline = Pipeline(stages=[rf])
+    pipelineModel = pipeline.fit(training)
+    trainingPredictions = pipelineModel.transform(training)
+    #trainingPredictions.show()
+    trainingPredictions.select("prediction", "label", "features").show()
+    testPredictions = pipelineModel.transform(test)
+
+    #evaluator = MulticlassClassificationEvaluator(
+    #labelCol="label", predictionCol="prediction", metricName="precision")
+    evaluator = BinaryClassificationEvaluator()
+from pyspark.mllib.linalg import Vectors
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.param import Param, Params
+    evaluatorParaMap = {evaluator.metricName: "areaUnderROC"}
+    aucTraining = evaluator.evaluate(trainingPredictions, evaluatorParaMap)
+    aucTest = evaluator.evaluate(testPredictions, evaluatorParaMap)
