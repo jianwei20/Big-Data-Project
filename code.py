@@ -97,3 +97,20 @@ from pyspark.ml.param import Param, Params
     evaluatorParaMap = {evaluator.metricName: "areaUnderROC"}
     aucTraining = evaluator.evaluate(trainingPredictions, evaluatorParaMap)
     aucTest = evaluator.evaluate(testPredictions, evaluatorParaMap)
+    
+# The multiplies out to (2 x 3 x 3) x 10 = 180 different models being trained.
+ # k = 3 and k = 10 are common
+from pyspark.ml.tuning import *
+    paramGrid = ParamGridBuilder().addGrid(rf.impurity, ['entropy', 'gini']).addGrid(rf.numTrees, [10, 30, 50]).build()
+ # println(paramGrid(1))
+    cv = CrossValidator().setEstimator(pipeline).setEvaluator(evaluator).setEstimatorParamMaps(paramGrid).setNumFolds(3)
+ # Run cross-validation, and choose the best set of parameters.
+    cvModel = cv.fit(training)
+    cvPredictions = cvModel.transform(test)
+    cvAUCTest = evaluator.evaluate(cvPredictions, evaluatorParaMap)
+
+    cvPredictions.show()
+
+#	println("pipeline Training AUC: " + aucTraining)
+    print("pipeline Test AUC: %g" % aucTest)
+    print("Cross-Validation test AUC: %g" % cvAUCTest)
