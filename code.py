@@ -66,6 +66,7 @@ from pyspark.ml.feature import RFormula
     data1.show()
 
 # Split training and test data.
+    #(training, test) = data1.randomSplit([0.7, 0.3], seed = 12345)
     training, test = data1.randomSplit([0.7, 0.3], seed = 12345)
     training.show()
     
