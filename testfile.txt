@@ -1,0 +1,113 @@
+C1: 	0.516455 - both
+banner_pos:	0.513123-both
+site_category:		0.574741	0575605
+app_category:		0.551553	0.551865
+device_type:		0.516127-both
+device_conn_type:	0.510501-both
+C15:	0.539391-both
+C16:	0.540405-both
+C18:	0.599017-both
+C19:	0.597407	0.596539
+
+
+
+id:	0.503922	0.501899
+click:	1-both
+hour:	??
+site_id:	0.66975		0.678336
+site_domain:	0.673977	0.675177
+app_id:		0.564229	0.565222
+app_domain:	0.538057	0.537855
+device_id:	0.500964	0.525925
+device_ip:	0.502814	0.514828
+device_model:	0.569346	0.594994
+C14:	0.665905	0.669574
+C17:	0.671972	0.673775
+C20:	0.567259	0.566654
+C21:	0.675754	0.675795
+
+
+formula = RFormula(formula="label ~ app_id, site_category, site_id, site_domain, device_model, C14, C17, C18, C19, C21 ", featuresCol="features", labelCol="label")
+0.680695	0.694108
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+sqlContext = SQLContext(sc)
+customSchema = StructType([
+      StructField("id", DoubleType(), False),
+      StructField("click", DoubleType(), False),
+      StructField("hour", StringType(), True),
+      StructField("C1", DoubleType(), False),
+      StructField("banner_pos", DoubleType(), False),
+      StructField("site_id", StringType(), True),
+      StructField("site_domain", StringType(), True),
+      StructField("site_category", StringType(), True),
+      StructField("app_id", StringType(), True),
+      StructField("app_domain", StringType(), True),
+      StructField("app_category", StringType(), True),
+      StructField("device_id", StringType(), True),
+      StructField("device_ip", StringType(), True),
+      StructField("device_model", StringType(), True),
+      StructField("device_type", DoubleType(), False),
+      StructField("device_conn_type", DoubleType(), False),
+      StructField("C14", DoubleType(), False),
+      StructField("C15", DoubleType(), False),
+      StructField("C16", DoubleType(), False),
+      StructField("C17", DoubleType(), False),
+      StructField("C18", DoubleType(), False),
+      StructField("C19", DoubleType(), False),
+      StructField("C20", DoubleType(), False),
+      StructField("C21", DoubleType(), False)])
+df = sqlContext.read.format("com.databricks.spark.csv").options(header= 'true').schema(customSchema).load("file:///home/bigdatas16/Downloads/train100K.csv")
+from pyspark.ml.feature import StringIndexer
+data = StringIndexer(inputCol="click", outputCol="label").fit(df).transform(df)
+from pyspark.ml.feature import RFormula
+formula = RFormula(formula="label ~ app_id + site_category + site_id + site_domain + device_model + C14 + C17 + C18 + C19 + C21 ", featuresCol="features", labelCol="label")
+output = formula.fit(data).transform(data)
+data1 = output.select("label", "features")
+(training, test) = data1.randomSplit([0.7, 0.3], seed = 12345)
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.param import Param, Params
+from pyspark.ml.feature import HashingTF, Tokenizer
+from pyspark.sql import Row
+from pyspark.ml import Pipeline
+from pyspark.ml.classification import RandomForestClassifier
+from pyspark.ml.feature import StringIndexer, VectorIndexer
+from pyspark.mllib.classification import LogisticRegressionWithLBFGS
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.mllib.util import MLUtils
+rf = RandomForestClassifier(numTrees = 100, maxDepth = 10, maxBins = 128)
+pipeline = Pipeline(stages=[rf])
+pipelineModel = pipeline.fit(training)
+trainingPredictions = pipelineModel.transform(training)
+trainingPredictions.select("prediction", "label", "features").show()
+testPredictions = pipelineModel.transform(test)
+evaluator = BinaryClassificationEvaluator()
+from pyspark.mllib.linalg import Vectors
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.param import Param, Params
+evaluatorParaMap = {evaluator.metricName: "areaUnderROC"}
+aucTraining = evaluator.evaluate(trainingPredictions, evaluatorParaMap)
+aucTest = evaluator.evaluate(testPredictions, evaluatorParaMap)
+from pyspark.ml.tuning import *
+paramGrid = ParamGridBuilder().addGrid(rf.impurity, ['entropy', 'gini']).addGrid(rf.numTrees, [10, 30, 50]).build()
+cv = CrossValidator().setEstimator(pipeline).setEvaluator(evaluator).setEstimatorParamMaps(paramGrid).setNumFolds(3)
+cvModel = cv.fit(training)
+cvPredictions = cvModel.transform(test)
+cvAUCTest = evaluator.evaluate(cvPredictions, evaluatorParaMap)
+print("pipeline Test AUC: %g" % aucTest)
+print("Cross-Validation test AUC: %g" % cvAUCTest)
