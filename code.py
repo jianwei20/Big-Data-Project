@@ -20,6 +20,8 @@ def writeRecords(record):
 ~
 
 # My name is Pong Pong ^_^
+import time
+start = time.time()
 from pyspark.sql import SQLContext
 from pyspark.sql.types import *
     sqlContext = SQLContext(sc)
@@ -60,7 +62,7 @@ from pyspark.ml.feature import StringIndexer
 
 # RFormula
 from pyspark.ml.feature import RFormula
-    formula = RFormula(formula="label ~ C1 + banner_pos + site_category + app_category +device_type + device_conn_type + C15 + C16 + C18 + C19", featuresCol="features", labelCol="label")
+    formula = RFormula(formula="label ~ banner_pos + app_id + site_category + site_id + site_domain + device_model + C14 + C17 + C18 + C19 + C21 ", featuresCol="features", labelCol="label")
     output = formula.fit(data).transform(data)
     data1 = output.select("label", "features")
     data1.show()
@@ -81,7 +83,7 @@ from pyspark.ml.feature import StringIndexer, VectorIndexer
 from pyspark.mllib.classification import LogisticRegressionWithLBFGS
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 from pyspark.mllib.util import MLUtils
-rf = RandomForestClassifier().setMaxBins(70)
+rf = RandomForestClassifier(numTrees = 100, maxDepth = 20, maxBins = 128)
     pipeline = Pipeline(stages=[rf])
     pipelineModel = pipeline.fit(training)
     trainingPredictions = pipelineModel.transform(training)
@@ -115,3 +117,5 @@ from pyspark.ml.tuning import *
 #	println("pipeline Training AUC: " + aucTraining)
     print("pipeline Test AUC: %g" % aucTest)
     print("Cross-Validation test AUC: %g" % cvAUCTest)
+    end = time.time()
+    print(end - start)
