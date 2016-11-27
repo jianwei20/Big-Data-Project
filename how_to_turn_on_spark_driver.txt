@@ -1,0 +1,8 @@
+#source ~/.bashrc
+#http://localhost:4040/executors/   後台
+#pyspark --master local[*] --executor-memory 4G --driver-memory 2G --packages com.databricks:spark-csv_2.10:1.4.0
+#(加起來不要超過8  --executor-memory 2g   --driver-memory 2g 處理排程)
+#啟動pyspark指令：
+#pyspark --packages com.databricks:spark-csv_2.10:1.4.0
+#pyspark --packages com.databricks:spark-csv_2.10:1.4.0 --master local[*] --executor-memory 4G
+

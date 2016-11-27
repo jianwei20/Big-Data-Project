@@ -1,0 +1,1 @@
+sort -t "delima sign" -k -row_numbern filename
